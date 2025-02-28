@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import {parseMarkdownToTree} from './markdownParser.js';
+import {parseMarkdownToTree} from './project/src/utils/markdownParser.js';
 let mdFile = path.join('./input.md');
 
 // 获取md文件内容

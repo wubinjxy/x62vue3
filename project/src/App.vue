@@ -1,272 +1,245 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { Graph } from '@antv/x6'
-import { parseMarkdownToTree } from './utils/markdownParser'
+import { ref, onMounted, watch } from "vue";
+import { Graph } from "@antv/x6";
+import { parseMarkdownToTree } from "./utils/markdownParser";
+import { DagreLayout } from "@antv/layout";
+import Hierarchy from "@antv/hierarchy";
 // import { marked } from 'marked'
 
-const markdown = ref(`## 步骤`)
-const container = ref<HTMLDivElement | null>(null)
-let graph: Graph | null = null
+const markdown = ref(`## 步骤
+1. 准备工作  
+   - 猪肉切片，加入盐、酱油、料酒、淀粉腌制。
+   - 青椒切丝，姜蒜切末。
+     - 1
+
+2. 炒肉  
+   - 热锅冷油，放入腌好的猪肉片炒至变色，捞出备用。
+
+3. 炒青椒  
+   - 锅中留油，爆香姜蒜末，加入青椒炒至断生。
+
+4. 合炒 
+   - 倒入炒好的肉片，调入适量盐和酱油，快速翻炒均匀。
+
+5. 完成 
+   - 出锅装盘。
+   
+## 123`);
+const container = ref<HTMLDivElement | null>(null);
+let graph: Graph | null = null;
+let nodes: any[] = [];
+let edges: any[] = [];
+let treeDataJson: any[] = [];
+console.log(Hierarchy, "Hierarchy");
+// 生成随机浅色
+const getRandomColor = () => {
+  // 使用 HSL 颜色空间来生成浅色
+  // 色相随机（0-360）
+  const hue = Math.floor(Math.random() * 360);
+  // 饱和度固定在30-50%之间
+  const saturation = Math.floor(Math.random() * 20 + 30);
+  // 亮度固定在85-95%之间，确保是浅色
+  const lightness = Math.floor(Math.random() * 10 + 85);
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+};
+let color = getRandomColor();
 
 
 // 递归生成node
-const createNode = (orignData: any,nodes,edges,pNode=null) => {
-  console.log(orignData)
-  
-  orignData.forEach((item:any) => {
+const createNode = (orignData: any, nodes, edges, pNode = null) => {
+  console.log(orignData, "orignData");
+
+  orignData.forEach((item: any) => {
     let node = {
       id: item.id,
       label: item.content,
-      isMain: item.level==0,
-      level:item.level
-      // subNodes: item.subNodes
-    }
-    
-    console.log(pNode)
-    if(pNode){
+      isMain: item.level == 0,
+      level: item.level,
+      shape: "rect",
+      width: item.content.length * 16,
+      height: 30,
+      attrs: {
+        body: {
+          fill: color,
+          stroke: "transparent",
+        },
+      },
+    };
+
+    if (pNode) {
       edges.push({
         source: pNode?.id,
-        target: item.id
-      })
+        target: item.id,
+      });
     }
-    nodes.push(node)
-    if(item.children){
-       createNode(item.children,nodes,edges,node)
+    nodes.push(node);
+    if (item.children) {
+      createNode(item.children, nodes, edges, node);
     }
-  })
-  return {nodes,edges}
-}
+  });
+  return { nodes, edges };
+};
 
 const parseMarkdown = (md: string) => {
-  let treeData = parseMarkdownToTree(md)
-  let nodes:any = []
-  let edges:any = []
-  const nodeObj = createNode([treeData],nodes,edges)
-  nodes = nodeObj.nodes
-  edges = nodeObj.edges
-  console.log(nodeObj)
-  return { nodes, edges }
+  let treeData = parseMarkdownToTree(md);
 
+  let nodes: any = [];
+  let edges: any = [];
+  const nodeObj = createNode([treeData], nodes, edges);
+  nodes = nodeObj.nodes;
+  edges = nodeObj.edges;
+  return { nodes, edges };
+};
 
-  // console.log(md)
-  // const lines = md.split('\n')
-  
-  // let currentMainNode: string | null = null
-  // let lastNodeId = 0
-  // let subNodeCount = 0
-
-  // const createNodeId = () => `node-${++lastNodeId}`
-
-  // lines.forEach((line) => {
-  //   console.log(line) 
-  //   const mainStepMatch = line.match(/^\d+\.\s+\*\*([^*]+)\*\*/)
-  //   const subStepMatch = line.match(/^\s*-\s+(.+)/)
-
-  //   if (mainStepMatch) {
-  //     subNodeCount = 0 // Reset sub-node counter for new main node
-  //     const nodeId = createNodeId()
-  //     const label = mainStepMatch[1].trim()
-  //     nodes.push({
-  //       id: nodeId,
-  //       label,
-  //       isMain: true,
-  //       subNodes: 0
-  //     })
-
-  //     if (nodes.length > 1) {
-  //       const prevMainNode = nodes.find(n => n.isMain)?.id
-  //       if (prevMainNode && prevMainNode !== nodeId) {
-  //         edges.push({
-  //           source: prevMainNode,
-  //           target: nodeId
-  //         })
-  //       }
-  //     }
-  //     currentMainNode = nodeId
-  //   } else if (subStepMatch && currentMainNode) {
-  //     const nodeId = createNodeId()
-  //     const label = subStepMatch[1].trim()
-  //     nodes.push({
-  //       id: nodeId,
-  //       label,
-  //       isMain: false,
-  //       subNodeIndex: subNodeCount++
-  //     })
-
-  //     // Update the main node's sub-node count
-  //     const mainNode = nodes.find(n => n.id === currentMainNode)
-  //     if (mainNode) {
-  //       mainNode.subNodes = (mainNode.subNodes || 0) + 1
-  //     }
-
-  //     edges.push({
-  //       source: currentMainNode,
-  //       target: nodeId
-  //     })
-  //   }
-  // })
-  // console.log(nodes, edges )
-  // return { nodes, edges }
-}
+const initData = () => {
+  const { nodes: a, edges: b } = parseMarkdown(markdown.value);
+  nodes = a;
+  edges = b;
+  return { nodes, edges };
+};
 
 const updateGraph = () => {
-  if (!graph) return
-  
-  graph.clearCells()
-  const { nodes, edges } = parseMarkdown(markdown.value)
-  
-  // Layout configuration
-  const startY = 50
-  const mainNodeGap = 250 // Increased vertical gap between main nodes
-  const subNodeHorizontalGap = 200 // Horizontal distance from main node to sub-nodes
-  const subNodeVerticalGap = 100 // Vertical gap between sub-nodes
-  
-  let currentY = startY+100
-  let lastMainNodeId = null
+  if (!graph) return;
 
-  // First pass: Create all nodes
-  nodes.forEach((node: any,index) => {
-    if (node.isMain) {
-      // Main node positioning
-      const nodeConfig = {
-        id: node.id,
-        shape: 'rect',
-        width: 100,
-        height: 60,
-        position: {
-          x: 50,
-          y: currentY
-        },
-        label: node.label,
+  let treeData = parseMarkdownToTree(markdown.value);
+  console.log(treeData, "ddd");
+  graph.clearCells();
+  initData();
+  const result = Hierarchy.mindmap(treeData, {
+    direction: "H",
+    getHeight() {
+      return 16;
+    },
+    getWidth() {
+      return 16;
+    },
+    getHGap() {
+      return 80;
+    },
+    getVGap() {
+      return 1;
+    },
+    getSide: () => {
+      return "right";
+    },
+  });
+
+  const model: Model.FromJSONData = { nodes: [], edges: [] };
+  const traverse = (data: HierarchyResult) => {
+    if (data) {
+      console.log(data, "data");
+      model.nodes?.push({
+        id: `${data.id}`,
+        x: data.x + 250,
+        y: data.y + 250,
+        shape: "rect",
+        label: data.data.content,
+        width: data.data.content.length * 16,
+        height: 16,
         attrs: {
           body: {
-            fill: '#e6f7ff',
-            stroke: '#1890ff',
-            strokeWidth: 2,
-            rx: 8,
-            ry: 8,
-          },
-          label: {
-            fill: '#333',
-            fontSize: 14,
-            fontWeight: 'bold',
-            textWrap: {
-              width: -20,
-              height: -20,
-              ellipsis: true
-            }
+            fill: color,
+            stroke: "transparent",
           },
         },
-      }
-      graph?.addNode(nodeConfig)
-      
-      // Update for next main node
-      currentY += mainNodeGap
-      lastMainNodeId = node.id
-    } else {
-      // Sub-node positioning
-      const parentNode = nodes.find(n => n.id === edges.find(e => e.target === node.id)?.source)
-      if (!parentNode) return
-      const parentY = graph?.getCellById(parentNode.id).position().y
-      const subNodeY =((node.level + index) * subNodeVerticalGap) - 
-                      ((parentNode.level * subNodeVerticalGap) / 2)
-      const subNodeX =  subNodeHorizontalGap*(node.level-1)
-
-      console.log(parentY,'parentY',subNodeY)
-
-
-      const nodeConfig = {
-        id: node.id,
-        shape: 'rect',
-        width: 150,
-        height: 50,
-        position: {
-          x: subNodeX,
-          y: subNodeY
-        },
-        label: node.label,
-        attrs: {
-          body: {
-            fill: '#fff',
-            stroke: '#91d5ff',
-            strokeWidth: 2,
-            rx: 8,
-            ry: 8,
-          },
-          label: {
-            fill: '#333',
-            fontSize: 12,
-            textWrap: {
-              width: -20,
-              height: -20,
-              ellipsis: true
-            }
-          },
-        },
-      }
-      graph?.addNode(nodeConfig)
+      });
     }
-  })
-
-  // Second pass: Create edges with improved routing
-  edges.forEach((edge) => {
-    graph?.addEdge({
-      source: edge.source,
-      target: edge.target,
-      attrs: {
-        line: {
-          stroke: '#91d5ff',
-          strokeWidth: 2,
-          targetMarker: {
-            name: 'block',
-            size: 8,
+    if (data.children) {
+      data.children.forEach((item: HierarchyResult) => {
+        model.edges?.push({
+          source: `${data.id}`,
+          target: `${item.id}`,
+          attrs: {
+          line: {
+            stroke: "#1890ff",
+            strokeDasharray: 5,
+            style: {
+              animation: " ",
+            },
           },
         },
-      },
-      router: {
-        name: 'manhattan',
-        args: {
-          padding: 20,
-          startDirections: ['right'],
-          endDirections: ['left'],
-        },
-      },
-      connector: {
-        name: 'rounded',
-        args: {
-          radius: 8,
-        },
-      },
-    })
-  })
+        });
+        traverse(item);
+      });
+    }
+  };
+  traverse(result);
 
-  // Adjust the view to fit all content
-  const padding = 40
-  const contentArea = graph.getContentArea()
-  const graphWidth = Math.max(graph.container.clientWidth, contentArea.width + padding * 2)
-  const graphHeight = Math.max(graph.container.clientHeight, contentArea.height + padding * 2)
-  
-  graph.resize(graphWidth, graphHeight)
-  graph.centerContent()
-  
-  // Calculate and apply scale if needed
-  const scaleX = (graph.container.clientWidth - padding * 2) / contentArea.width
-  const scaleY = (graph.container.clientHeight - padding * 2) / contentArea.height
-  const scale = Math.min(scaleX, scaleY, 1)
-  
-  if (scale < 1) {
-    graph.scale(scale)
-    graph.centerContent()
+  graph.fromJSON(model);
+  // const dagreLayout = new DagreLayout({
+  //     type: 'dagre',
+  //     rankdir: 'TB',
+  //     // 向下
+  //     align: 'DL',
+  //     ranksep: 35,
+  //     nodesep: 15,
+  //   })
+  //   const model = dagreLayout.layout({
+  //     nodes,
+  //     edges,
+  //   })
+
+  //   graph.fromJSON(model)
+};
+
+const setPreEdge = (node: any) => {
+  let inEdges = graph.getIncomingEdges(node);
+  if (inEdges) {
+    inEdges?.forEach((edge) => {
+      // 设置边样式
+      edge.attr({
+        line: {
+          stroke: "#1890ff",
+          strokeDasharray: 5,
+          targetMarker: "classic",
+          style: {
+            animation: "ant-line 30s infinite linear",
+          },
+        },
+      });
+    });
+    const parent = inEdges[0].getSourceNode();
+    if (parent) {
+      setPreEdge(parent);
+    }
   }
-}
+};
 
-// watch(markdown, () => {
-//   requestAnimationFrame(() => {
-//     updateGraph()
-//   })
-// }, { immediate: true })
+const setNextEdge = (node) => {
+  const outEdges = graph.getOutgoingEdges(node);
+
+  if (outEdges) {
+    outEdges?.forEach((edge) => {
+      // 设置边样式
+      edge.attr({
+        line: {
+          stroke: "#1890ff",
+          strokeDasharray: 5,
+          targetMarker: "classic",
+          style: {
+            animation: "ant-line 30s infinite linear",
+          },
+        },
+      });
+    });
+    outEdges?.forEach((edge) => {
+      // 递归处理子节点
+      const childNode = edge.getTargetNode();
+      console.log(childNode, "childNode");
+      if (childNode) {
+        setNextEdge(childNode, true);
+      }
+    });
+  }
+};
+
+const highlightEdges = (node) => {
+  setPreEdge(node);
+  setNextEdge(node);
+};
 
 onMounted(() => {
+  initData();
   if (container.value) {
     graph = new Graph({
       container: container.value,
@@ -276,34 +249,67 @@ onMounted(() => {
         size: 10,
         color: '#f0f0f0',
       },
-      autoResize: true,
       connecting: {
-        snap: true,
-        allowBlank: false,
-        allowLoop: false,
-        highlight: true,
+        connector: "smooth",
       },
-      interacting: {
-        nodeMovable: true,
-        edgeMovable: true,
-      },
-      scaling: {
-        min: 0.2,
-        max: 1.5,
-      },
-      panning: true,
-    })
-    
-    updateGraph()
+      autoResize: true,
+    });
 
-    window.addEventListener('resize', () => {
+    // 监听节点的点击事件
+    graph.on("node:click", ({ node }) => {
+      // 首先，取消之前高亮的边
+      let nodes = graph?.getNodes();
+      nodes.forEach((node) => {
+        const edges = graph?.getConnectedEdges(node);
+        edges.forEach((edge) => {
+          // 取消高亮
+          edge.attr({
+          line: {
+            stroke: '#1890ff',
+            targetMarker: 'classic',
+            style: {
+          animation: 'ant-line1 30s infinite linear',
+        },
+          },
+        });
+        });
+      });
+
+      highlightEdges(node);
+    });
+
+    // // 监听节点的取消选中事件
+    // graph.on("node:unselected", ({ node }) => {
+    //   const connectedEdges = graph?.getConnectedEdges(node);
+    //   console.log(connectedEdges, "edges");
+    //   connectedEdges.forEach((edge) => {
+    //     edge.attr({
+    //       line: {
+    //         stroke: "#1890ff",
+    //         strokeDasharray: 5,
+    //         targetMarker: "classic",
+    //         style: {
+    //           animation: " ",
+    //         },
+    //       },
+    //     }); // 恢复默认颜色
+    //     edge.attr("line/strokeWidth", 1); // 恢复默认宽度
+    //   });
+    // });
+
+    updateGraph();
+
+    window.addEventListener("resize", () => {
       if (graph) {
-        graph.resize(container.value!.clientWidth, container.value!.clientHeight)
-        updateGraph()
+        graph.resize(
+          container.value!.clientWidth,
+          container.value!.clientHeight
+        );
+        updateGraph();
       }
-    })
+    });
   }
-})
+});
 </script>
 
 <template>
@@ -333,7 +339,8 @@ onMounted(() => {
   background-color: #f0f2f5;
 }
 
-.editor, .graph {
+.editor,
+.graph {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -389,5 +396,10 @@ body {
   margin: 0;
   padding: 0;
   background: #f0f2f5;
+}
+@keyframes ant-line {
+  to {
+    stroke-dashoffset: -1000;
+  }
 }
 </style>

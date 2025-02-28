@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.38",
-    "@antv/x6": "^2.18.1",
-    "marked": "^12.0.0"
+    "@antv/hierarchy": "^0.6.14",
+    "@antv/layout": "^0.3.24",
+    "@antv/x6": "^2.15.1",
+    "marked": "^12.0.0",
+    "vue": "^3.4.38"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.3",
